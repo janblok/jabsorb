@@ -25,15 +25,11 @@ package org.jabsorb.client;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
-import org.apache.commons.httpclient.HostConfiguration;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.httpclient.HttpState;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.methods.PostMethod;
-import org.apache.commons.httpclient.methods.RequestEntity;
-import org.apache.commons.httpclient.methods.StringRequestEntity;
 import org.jabsorb.client.TransportRegistry.SessionFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -57,8 +53,6 @@ public class HTTPSession implements Session
 
   protected HttpClient  client;
 
-  protected HttpState   state;
-
   protected URI         uri;
 
   public HTTPSession(URI uri)
@@ -66,14 +60,6 @@ public class HTTPSession implements Session
     this.uri = uri;
   }
 
-  /**
-   * An option to set state from the outside. for example, to provide existing
-   * session parameters.
-   */
-  public void setState(HttpState state)
-  {
-    this.state = state;
-  }
 
   /**
    * As per JSON-RPC Working Draft
@@ -89,20 +75,19 @@ public class HTTPSession implements Session
       {
         log.debug("Sending: " + message.toString(2));
       }
-      PostMethod postMethod = new PostMethod(uri.toString());
-      postMethod.setRequestHeader("Content-Type", "text/plain");
+      
+      HttpRequest request = HttpRequest.newBuilder()
+              .uri(uri)
+              .header("Content-Type", "application/json") // Set the Content-Type header
+              .POST(HttpRequest.BodyPublishers.ofString(message.toString())) // Specify POST method and body
+              .build();
+      
 
-      RequestEntity requestEntity = new StringRequestEntity(message.toString(),
-          JSON_CONTENT_TYPE, null);
-      postMethod.setRequestEntity(requestEntity);
-//      http().getHostConfiguration().setProxy(proxyHost, proxyPort);
-      http().executeMethod(null, postMethod, state);
-      int statusCode = postMethod.getStatusCode();
-      if (statusCode != HttpStatus.SC_OK)
-        throw new ClientError("HTTP Status - "
-            + HttpStatus.getStatusText(statusCode) + " (" + statusCode + ")");
-      JSONTokener tokener = new JSONTokener(postMethod
-          .getResponseBodyAsString());
+      HttpResponse<String> postMethod = http().send(request,  HttpResponse.BodyHandlers.ofString());
+      int statusCode = postMethod.statusCode();
+      if (statusCode != 200)
+        throw new ClientError("HTTP Status - (" + statusCode + ")");
+      JSONTokener tokener = new JSONTokener(postMethod.body());
       Object rawResponseMessage = tokener.nextValue();
       JSONObject responseMessage = (JSONObject) rawResponseMessage;
       if (responseMessage == null)
@@ -110,48 +95,28 @@ public class HTTPSession implements Session
             + rawResponseMessage.getClass());
       return responseMessage;
     }
-    catch (HttpException e)
-    {
-      throw new ClientError(e);
-    }
-    catch (IOException e)
-    {
-      throw new ClientError(e);
-    }
-    catch (JSONException e)
+    catch (IOException | JSONException | InterruptedException e)
     {
       throw new ClientError(e);
     }
   }
   
-  /**
-   * Expose commons-httpclient host configuration, for
-   * setting configuration parameters like proxy.
-   * 
-   * @return host configuration of the current HttpClient object 
-   */
-  public HostConfiguration getHostConfiguration() {
-	  return http().getHostConfiguration();
-  }
-
   HttpClient http()
   {
     if (client == null)
     {
-      client = new HttpClient();
-      if (state == null)
-      {
-        state = new HttpState();
-      }
-      client.setState(state);
+      client  = HttpClient.newBuilder()
+              .version(HttpClient.Version.HTTP_2) // Optional: Use HTTP/2 if available
+              .followRedirects(HttpClient.Redirect.NORMAL) // Optional: How to handle redirects
+              .connectTimeout(Duration.ofSeconds(10)) // Optional: Connection timeout
+              .build();
     }
     return client;
   }
 
   public void close()
   {
-    state.clear();
-    state = null;
+    client = null;
   }
 
   static class Factory implements SessionFactory

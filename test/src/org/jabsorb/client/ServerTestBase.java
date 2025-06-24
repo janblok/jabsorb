@@ -26,11 +26,11 @@
 
 package org.jabsorb.client;
 
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
+import org.eclipse.jetty.server.Server;
 import org.jabsorb.JSONRPCBridge;
 import org.jabsorb.JSONRPCServlet;
-import org.mortbay.jetty.Server;
-import org.mortbay.jetty.servlet.Context;
-import org.mortbay.jetty.servlet.ServletHolder;
 
 import junit.framework.TestCase;
 
@@ -46,19 +46,21 @@ public class ServerTestBase extends TestCase
    */
   static class ServerContext {
 	  public Server server;
-	  public Context context;
+	  public ServletContextHandler context;
 	  public int     port;
 	  
 	  public ServerContext() throws Exception {
 			port= 8083;
 			JSONRPCBridge.getGlobalBridge().registerObject("test", new org.jabsorb.test.Test());
 			server= new Server(port);
-			context= new Context(server, JABSORB_CONTEXT, Context.SESSIONS);
+			context= new ServletContextHandler(JABSORB_CONTEXT, ServletContextHandler.SESSIONS);
 			ServletHolder jsonRpcServlet= new ServletHolder(new JSONRPCServlet());
 			// Based on the patch by http://code.google.com/u/cameron.taggart/
 			// located at http://code.google.com/p/json-rpc-client/issues/detail?id=1
 			jsonRpcServlet.setInitParameter("auto-session-bridge", "0");
 			context.addServlet(jsonRpcServlet, "/*");
+			
+			server.setHandler(context);
 			server.start();
 		}
   }

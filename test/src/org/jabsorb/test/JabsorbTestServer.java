@@ -26,12 +26,11 @@
 
 package org.jabsorb.test;
 
-import org.apache.jasper.servlet.JspServlet;
+import org.eclipse.jetty.ee10.servlet.DefaultServlet;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
+import org.eclipse.jetty.server.Server;
 import org.jabsorb.JSONRPCServlet;
-import org.mortbay.jetty.Server;
-import org.mortbay.jetty.servlet.Context;
-import org.mortbay.jetty.servlet.DefaultServlet;
-import org.mortbay.jetty.servlet.ServletHolder;
 
 /**
  * A basic embedded jetty implementation which runs the jabsorb webapp
@@ -100,17 +99,17 @@ public class JabsorbTestServer
    */
   private void createBaseContext()
   {
-    Context context = new Context(this.server, BASE_CONTEXT, Context.SESSIONS);
+	ServletContextHandler context = new ServletContextHandler(BASE_CONTEXT, ServletContextHandler.SESSIONS);
     context.setContextPath(BASE_CONTEXT);
-    context.setResourceBase("webapps/jsonrpc/");
+    context.setBaseResourceAsString("webapps/jsonrpc/");
     context.setAttribute("copyWebDir", "true");
     ServletHolder defaultServlet = new ServletHolder(new DefaultServlet());
     context.addServlet(defaultServlet, "/");
 
     // do jsps
-    ServletHolder jspServlet = new ServletHolder(new JspServlet());
-    jspServlet.setInitParameter("auto-session-bridge", "0");
-    context.addServlet(jspServlet, "*.jsp");
+//    ServletHolder jspServlet = new ServletHolder(new JspServlet());
+//    jspServlet.setInitParameter("auto-session-bridge", "0");
+//    context.addServlet(jspServlet, "*.jsp");
 
     // do static content
     ServletHolder jsonRpcServlet = new ServletHolder(new JSONRPCServlet());

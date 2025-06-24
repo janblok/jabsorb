@@ -13,18 +13,11 @@
  */
 package org.jabsorb.client;
 
-import java.io.IOException;
-import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.httpclient.HttpState;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.methods.GetMethod;
 import org.jabsorb.test.BeanA;
 import org.jabsorb.test.ITest;
 import org.json.JSONException;
@@ -35,8 +28,6 @@ import org.json.JSONObject;
  */
 public class ClientTestCase extends ServerTestBase
 {
-
-  HttpState state;
 
   TransportRegistry registry;
 
@@ -59,24 +50,6 @@ public class ClientTestCase extends ServerTestBase
     return registry;
   }
 
-  /**
-   * JSON-RPC tests need this setup to operate propely. This call invokes
-   * registerObject("test", ...) from the JSP
-   * 
-   * @deprecated since we are running the server in-process
-   */
-  void setupServerTestEnvironment(String url) throws HttpException, IOException
-  {
-    HttpClient client = new HttpClient();
-    state = new HttpState();
-    client.setState(state);
-    GetMethod method = new GetMethod(url);
-    int status = client.executeMethod(method);
-    if (status != HttpStatus.SC_OK)
-      throw new RuntimeException(
-          "Setup did not succeed. Make sure the JSON-RPC-Java test application is running on "
-              + getServiceRootURL());
-  }
 
   /**
    * Test for invalid URL
@@ -189,26 +162,6 @@ public class ClientTestCase extends ServerTestBase
     }
   }
 
-  // TODO run embedded proxy server (is  Jetty capable of working like a proxy?) to really test proxy.
-  // Right now, we are just testing that the proxy parameters are being set
-  public void testProxyConfiguration()
-  {
-    HTTPSession proxiedSession = newHTTPSession(getServiceURL());
-    int proxyPort = 40888; // hopefully, the port is unused
-    proxiedSession.getHostConfiguration().setProxy("localhost", proxyPort);
-    Client client = new Client(proxiedSession);
-    ITest proxyObject = (ITest) client.openProxy("test", ITest.class);
-    try
-    {
-      proxyObject.voidFunction();
-    }
-    catch (ClientError ex)
-    {
-      if (!(ex.getCause() instanceof ConnectException))
-        fail("expected ConnectException, got "
-            + ex.getCause().getClass().getName());
-    }
-  }
 
   String getServiceURL()
   {

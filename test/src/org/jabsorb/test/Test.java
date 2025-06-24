@@ -42,7 +42,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Vector;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.jabsorb.JSONRPCBridge;
 import org.jabsorb.callback.InvocationCallback;
